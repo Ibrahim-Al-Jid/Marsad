@@ -82,6 +82,9 @@ class SnapshotSubmission(BaseModel):
     model_connection: ModelConnection | None = None
 
 
+SNAPSHOT_TOO_BIG = "لقطة GitHub أكبر من حد الرفع (٢ ميجابايت). اختار مستودعًا أصغر أو ارفع ZIP لمجلد الكود فقط."
+
+
 class GitHubFailure(Exception):
     def __init__(self, status, detail):
         self.status = status
@@ -228,12 +231,12 @@ def download_archive(session, token, repo, commit):
         accepted(response, 200)
         length = response.headers.get("content-length")
         if length is not None and int(length) > MAX_ARTIFACT:
-            raise GitHubFailure(413, "لقطة GitHub أكبر من حد الرفع.")
+            raise GitHubFailure(413, SNAPSHOT_TOO_BIG)
         for block in response.iter_raw():
             if monotonic() - started > MAX_ARCHIVE_SECONDS:
                 raise GitHubFailure(504, "انتهت مهلة تنزيل لقطة GitHub.")
             if len(result) + len(block) > MAX_ARTIFACT:
-                raise GitHubFailure(413, "لقطة GitHub أكبر من حد الرفع.")
+                raise GitHubFailure(413, SNAPSHOT_TOO_BIG)
             result.extend(block)
     raw = bytes(result)
     if not raw.startswith(b"PK\x03\x04"):
